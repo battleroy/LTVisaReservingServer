@@ -8,4 +8,14 @@
         <listener-class>com.ltdaemon.servlet.MainServletContextListener</listener-class>
     </listener>
 
+    <servlet>
+        <servlet-name>MainServlet</servlet-name>
+        <servlet-class>com.ltdaemon.servlet.MainServlet</servlet-class>
+    </servlet>
+
+    <servlet-mapping>
+        <servlet-name>MainServlet</servlet-name>
+        <url-pattern>/*</url-pattern>
+    </servlet-mapping>
+
 </web-app>

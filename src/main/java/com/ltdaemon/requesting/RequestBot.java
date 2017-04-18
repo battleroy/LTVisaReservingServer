@@ -5,7 +5,7 @@ import com.google.api.client.http.GenericUrl;
 import com.google.api.client.http.HttpRequest;
 import com.google.api.client.http.HttpRequestFactory;
 import com.google.api.client.http.HttpTransport;
-import com.google.api.client.http.apache.ApacheHttpTransport;
+import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.JsonObjectParser;
 import com.google.api.client.json.jackson2.JacksonFactory;
@@ -16,6 +16,8 @@ import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.exceptions.TelegramApiException;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.Proxy;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -27,10 +29,11 @@ public class RequestBot extends TelegramLongPollingBot {
     private static final String POLL_AVAILABLE_URL = "https://evas2.urm.lt/calendar/json?_d=&_aby=3&_cry=6&_c=1&_b=2";
     private static final String POLL_RESERVED_URL = "https://evas2.urm.lt/calendar/json?_d=&_aby=3&_cry=6&_c=1&_b=1";
 
-    private static final String C_POLL_AVAILABLE_DATES_NOW = "/pollAvailableNow";
-    private static final String C_POLL_RESERVED_DATES_NOW = "/pollReservedNow";
+    private static final String C_POLL_AVAILABLE_DATES_NOW = "/pollavailable";
+    private static final String C_POLL_RESERVED_DATES_NOW = "/pollreserved";
     private static final String C_POLL_SUBSCRIBE = "/subscribe";
     private static final String C_POLL_UNSUBSCRIBE = "/unsubscribe";
+
 
     private static final Map<String, String> pollUrlsByCommand = new HashMap<String, String>() {{
         put(C_POLL_AVAILABLE_DATES_NOW, POLL_AVAILABLE_URL);
@@ -44,16 +47,47 @@ public class RequestBot extends TelegramLongPollingBot {
     private static final String S_UNSUBSCRIBED = "Unsubscribed.";
 
 
-    private static final HttpTransport HTTP_TRANSPORT = new ApacheHttpTransport();
+//        put("46.251.49.21", 8080); BEST EVER PROXY
+//        put("88.119.137.155", 1080);
+//        put("78.63.16.100", 1080);
+//        put("91.187.180.13", 36555);
+//        put("81.23.6.236", 3128);
+//        put("88.119.150.143", 8080);
+//        put("89.190.101.177", 21320);
+//        put("77.79.35.98", 8080);
+//        put("217.117.28.132", 80);
+//        put("77.221.81.106", 8080);
+//        put("77.221.67.219", 8080);
+//        put("86.100.118.44", 80);
+//        put("85.204.74.103", 3128);
+//        put("88.119.204.46", 8080);
+
+    private static HttpTransport HTTP_TRANSPORT;
     private static final JsonFactory JSON_FACTORY = new JacksonFactory();
 
-    private static final long POLL_RATE_MS = 2 * 60 * 1000;
+    static {
+        Proxy proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress("46.251.49.21", 8080));
+        HTTP_TRANSPORT = new NetHttpTransport.Builder().setProxy(proxy).build();
+    }
+
+    private static final long POLL_RATE_MS = 5 * 60 * 1000;
     private final ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
     private final Set<Long> subscribedChatIds = new HashSet<>();
+    private final HttpRequestFactory requestFactory;
 
 
     public RequestBot() {
         super();
+
+        requestFactory = HTTP_TRANSPORT.createRequestFactory(
+                httpRequest -> {
+                    httpRequest.setConnectTimeout(2 * 60 * 1000);
+                    httpRequest.setReadTimeout(2 * 60 * 1000);
+                    httpRequest.getHeaders().set("X-Requested-With", "XMLHttpRequest");
+                    httpRequest.getHeaders().setUserAgent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/57.0.2987.133 Safari/537.36");
+                    httpRequest.setParser(new JsonObjectParser(JSON_FACTORY));
+                }
+        );
 
         service.scheduleAtFixedRate(() -> {
 
@@ -80,7 +114,7 @@ public class RequestBot extends TelegramLongPollingBot {
             String messageText = message.getText();
 
             if (messageText.equals(C_POLL_AVAILABLE_DATES_NOW) ||
-                messageText.equals(C_POLL_RESERVED_DATES_NOW)) {
+                    messageText.equals(C_POLL_RESERVED_DATES_NOW)) {
 
                 handleImmediatePolls(message, messageText);
 
@@ -165,13 +199,6 @@ public class RequestBot extends TelegramLongPollingBot {
     @SuppressWarnings("unchecked")
     private List<String> pollAvailableDates(String pollUrl) {
         try {
-            HttpRequestFactory requestFactory = HTTP_TRANSPORT.createRequestFactory(
-                httpRequest -> {
-                    httpRequest.getHeaders().set("X-Requested-With", "XMLHttpRequest");
-                    httpRequest.setParser(new JsonObjectParser(JSON_FACTORY));
-                }
-            );
-
             GenericUrl url = new GenericUrl(pollUrl);
             HttpRequest request = requestFactory.buildGetRequest(url);
 
@@ -182,7 +209,7 @@ public class RequestBot extends TelegramLongPollingBot {
 
             for (Object obj : objectList) {
                 if (obj instanceof String) {
-                    String dateString = (String)obj;
+                    String dateString = (String) obj;
 
                     if (dateString.length() > 0) {
                         result.add((String) obj);
