@@ -90,6 +90,7 @@ public class RequestBot extends TelegramLongPollingBot {
         );
 
         service.scheduleAtFixedRate(() -> {
+            System.out.println("Scheduled poll fired.");
 
             List<String> availableDates = pollAvailableDates(pollUrlsByCommand.get(C_POLL_AVAILABLE_DATES_NOW));
             if (availableDates != null && availableDates.size() > 0) {
@@ -199,6 +200,8 @@ public class RequestBot extends TelegramLongPollingBot {
     @SuppressWarnings("unchecked")
     private List<String> pollAvailableDates(String pollUrl) {
         try {
+            System.out.println("Polling started...");
+
             GenericUrl url = new GenericUrl(pollUrl);
             HttpRequest request = requestFactory.buildGetRequest(url);
 
@@ -221,11 +224,14 @@ public class RequestBot extends TelegramLongPollingBot {
             }
 
             if (!isError) {
+                System.out.println("Poll succeeded.");
+
                 return result;
             }
 
             return null;
         } catch (IOException e) {
+            System.err.println("Poll error: " + e.getMessage());
             e.printStackTrace();
             return null;
         }
