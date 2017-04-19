@@ -71,9 +71,12 @@ public class RequestBot extends TelegramLongPollingBot {
     }
 
     private static final long POLL_RATE_MS = 5 * 60 * 1000;
-    private final ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
+    private final ScheduledExecutorService pollService = Executors.newSingleThreadScheduledExecutor();
     private final Set<Long> subscribedChatIds = new HashSet<>();
     private final HttpRequestFactory requestFactory;
+
+    private static final String SELF_AWAKE_GET_URL = "https://lt-visa-reserving.herokuapp.com/";
+    private final ScheduledExecutorService selfAwakeService = Executors.newSingleThreadScheduledExecutor();
 
 
     public RequestBot() {
@@ -89,7 +92,7 @@ public class RequestBot extends TelegramLongPollingBot {
                 }
         );
 
-        service.scheduleAtFixedRate(() -> {
+        pollService.scheduleAtFixedRate(() -> {
             System.out.println("Scheduled poll fired.");
 
             List<String> availableDates = pollAvailableDates(pollUrlsByCommand.get(C_POLL_AVAILABLE_DATES_NOW));
@@ -104,6 +107,20 @@ public class RequestBot extends TelegramLongPollingBot {
             }
 
         }, 5 * 1000, POLL_RATE_MS, TimeUnit.MILLISECONDS);
+
+        selfAwakeService.scheduleAtFixedRate(() -> {
+            GenericUrl url = new GenericUrl(SELF_AWAKE_GET_URL);
+
+            try {
+                System.out.println("Self awake started.");
+                HttpRequest selfAwakeRequest = requestFactory.buildGetRequest(url);
+                selfAwakeRequest.execute();
+                System.out.println("Self awake succeeded");
+            } catch (IOException ex) {
+                System.err.println("Self awake error: " + ex.getMessage());
+            }
+
+        }, 10 * 1000, 5 * 60 * 1000, TimeUnit.MILLISECONDS);
     }
 
 
