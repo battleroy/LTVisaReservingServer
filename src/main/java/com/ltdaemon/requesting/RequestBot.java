@@ -26,7 +26,7 @@ import java.util.concurrent.TimeUnit;
 
 public class RequestBot extends TelegramLongPollingBot {
 
-    private static final String POLL_AVAILABLE_URL = "https://evas2.urm.lt/calendar/json?_d=&_aby=3&_cry=6&_c=1&_b=2";
+    private static final String POLL_AVAILABLE_URL = "https://evas2.urm.lt/calendar/json?_d=&_aby=3&_cry=6&_c=1&_t=";
     private static final String POLL_RESERVED_URL = "https://evas2.urm.lt/calendar/json?_d=&_aby=3&_cry=6&_c=1&_b=1";
 
     private static final String C_POLL_AVAILABLE_DATES_NOW = "/pollavailable";
